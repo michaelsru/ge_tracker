@@ -17,15 +17,7 @@ class OSRSGEMenuBar(rumps.App):
         # Popular OSRS items with their IDs
         self.items = {
             "Old school bond": 13190,
-            "Twisted bow": 20997,
-            "Scythe of vitur": 22325,
-            "Dragon claws": 13652,
-            "Abyssal whip": 4151,
-            "Armadyl godsword": 11802,
-            "Dragon warhammer": 13576,
-            "Bandos chestplate": 11832,
-            "Abyssal dagger": 13265,
-            "Dragon pickaxe": 11920
+            "Cooked karambwan": 3144
         }
         
         self.price_data = {}
