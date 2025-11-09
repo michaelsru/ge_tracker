@@ -33,7 +33,8 @@ class OSRSGEMenuBar(rumps.App):
         # Popular OSRS items with their IDs
         self.items: Dict[str, int] = {
             "Old school bond": 13190,
-	    "Cooked karambwan": 3144
+	    "Cooked karambwan": 3144,
+	    "Raw karambwan": 3142,
         }
         
         self.price_data: Dict[str, Dict[str, Any]] = {}
