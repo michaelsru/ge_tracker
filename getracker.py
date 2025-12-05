@@ -33,38 +33,84 @@ class OSRSGEMenuBar(rumps.App):
         # Popular OSRS items with their IDs
         self.items: Dict[str, int] = {
             "Old school bond": 13190,
-	    "Cooked karambwan": 3144,
-	    "Raw karambwan": 3142,
+            "Cooked karambwan": 3144,
+            "Raw karambwan": 3142,
         }
         
+        # State management
         self.price_data: Dict[str, Dict[str, Any]] = {}
-        self.last_update: str = "Never"
-        self._update_lock = threading.Lock()
+        self.last_update_str: str = "Never"
+        self.new_data_available: bool = False
         self._running = True
         
-        # Build initial menu
-        self.menu = [
-            rumps.MenuItem("OSRS GE Prices", callback=None),
-            rumps.separator,
-            rumps.MenuItem("Loading prices...", callback=None),
-            rumps.separator,
-            rumps.MenuItem("Refresh Now", callback=self.refresh_callback),
-            rumps.separator,
-            rumps.MenuItem("Quit", callback=self.quit_application)
-        ]
+        # UI Component References
+        # Structure: {item_id: {'main': MenuItem, 'avg': MenuItem, 'high': MenuItem, 'low': MenuItem}}
+        self.item_refs: Dict[int, Dict[str, rumps.MenuItem]] = {}
         
-        # Start background price fetcher
-        self.start_price_updater()
+        # Build the menu ONCE
+        self.build_static_menu()
+        
+        # Start background fetcher (Daemon thread)
+        self.fetch_thread = threading.Thread(target=self.background_fetch_loop, daemon=True)
+        self.fetch_thread.start()
+        
+        # Start UI updater (rumps Timer) - checks for data every 1 second
+        self.timer = rumps.Timer(self.ui_update_loop, 1)
+        self.timer.start()
+
+    def build_static_menu(self):
+        """Build the initial menu structure with references."""
+        self.menu.add(rumps.MenuItem("OSRS GE Prices", callback=None))
+        self.menu.add(rumps.separator)
+        
+        # Status Item (Dynamic)
+        self.status_item = rumps.MenuItem("Loading prices...", callback=None)
+        self.menu.add(self.status_item)
+        self.menu.add(rumps.separator)
+        
+        # Item Lists
+        for item_name, item_id in self.items.items():
+            # Create Main Item
+            main_item = rumps.MenuItem(f"{item_name}: ...", callback=None)
+            
+            # Create Submenu Items
+            avg_item = rumps.MenuItem("💰 Average: ...", callback=None)
+            high_item = rumps.MenuItem("📈 High: ...", callback=None)
+            low_item = rumps.MenuItem("📉 Low: ...", callback=None)
+            
+            # Action Item (we can recreate this or keep it static, static is fine)
+            # We need a closure for the callback
+            def make_callback(iid):
+                return lambda sender: self.open_price_chart(sender, iid)
+                
+            chart_item = rumps.MenuItem("📊 View Price Chart", callback=make_callback(item_id))
+            
+            # storage for updating
+            self.item_refs[item_id] = {
+                'main': main_item,
+                'avg': avg_item,
+                'high': high_item, 
+                'low': low_item
+            }
+            
+            # Assemble Submenu
+            main_item.add(avg_item)
+            main_item.add(high_item)
+            main_item.add(low_item)
+            main_item.add(rumps.separator)
+            main_item.add(chart_item)
+            
+            # Add to Main Menu
+            self.menu.add(main_item)
+            
+        # Footer
+        self.menu.add(rumps.separator)
+        self.menu.add(rumps.MenuItem("Refresh Now", callback=self.refresh_callback))
+        self.menu.add(rumps.separator)
+        self.menu.add(rumps.MenuItem("Quit", callback=self.quit_application))
     
     def format_price(self, price: int) -> str:
-        """Format price with K/M/B suffixes.
-        
-        Args:
-            price: Price value to format
-            
-        Returns:
-            Formatted price string
-        """
+        """Format price with K/M/B suffixes."""
         if price >= 1_000_000_000:
             return f"{price/1_000_000_000:.2f}B"
         elif price >= 1_000_000:
@@ -74,11 +120,7 @@ class OSRSGEMenuBar(rumps.App):
         return str(price)
     
     def fetch_prices(self) -> Optional[Dict[str, Dict[str, Any]]]:
-        """Fetch prices from OSRS Wiki API.
-        
-        Returns:
-            Dictionary of price data or None on error
-        """
+        """Fetch prices from OSRS Wiki API."""
         try:
             url = f"{self.API_BASE_URL}/latest"
             headers = {'User-Agent': self.USER_AGENT}
@@ -88,137 +130,81 @@ class OSRSGEMenuBar(rumps.App):
             
             data = response.json()
             return data.get('data', {})
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             print(f"Error fetching prices: {e}")
             return None
-        except (ValueError, KeyError) as e:
-            print(f"Error parsing price data: {e}")
-            return None
-    
-    def open_price_chart(self, sender: rumps.MenuItem, item_id: int) -> None:
-        """Open OSRS Wiki price page in browser.
-        
-        Args:
-            sender: Menu item that triggered the callback
-            item_id: OSRS item ID
-        """
-        url = f"https://prices.runescape.wiki/osrs/item/{item_id}"
-        webbrowser.open(url)
-    
-    def update_menu_items(self) -> None:
-        """Update the menu with current prices."""
-        with self._update_lock:
-            # Clear all items
-            self.menu.clear()
             
-            # Rebuild menu header
-            self.menu.add(rumps.MenuItem("OSRS GE Prices", callback=None))
-            self.menu.add(rumps.separator)
-            
-            if not self.price_data:
-                self.menu.add(rumps.MenuItem("❌ Unable to fetch prices", callback=None))
-            else:
-                # Add updated timestamp
-                self.menu.add(rumps.MenuItem(f"🕐 Updated: {self.last_update}", callback=None))
-                self.menu.add(rumps.separator)
-                
-                # Add price items
-                for item_name, item_id in self.items.items():
-                    item_id_str = str(item_id)
-                    if item_id_str in self.price_data:
-                        item_data = self.price_data[item_id_str]
-                        high = item_data.get('high', 0)
-                        low = item_data.get('low', 0)
-                        
-                        if high and low:
-                            avg = (high + low) // 2
-                            price_text = f"{item_name}: {self.format_price(avg)} gp"
-                            
-                            # Create menu item
-                            price_item = rumps.MenuItem(price_text)
-                            
-                            # Create submenu with details and chart option
-                            # Use closure to capture item_id properly
-                            def make_callback(item_id_val):
-                                return lambda sender: self.open_price_chart(sender, item_id_val)
-                            
-                            submenu = [
-                                rumps.MenuItem(f"💰 Average: {self.format_price(avg)} gp", callback=None),
-                                rumps.MenuItem(f"📈 High: {self.format_price(high)} gp", callback=None),
-                                rumps.MenuItem(f"📉 Low: {self.format_price(low)} gp", callback=None),
-                                rumps.separator,
-                                rumps.MenuItem("📊 View Price Chart", callback=make_callback(item_id))
-                            ]
-                            
-                            # Add submenu items
-                            for sub_item in submenu:
-                                price_item.add(sub_item)
-                            
-                            self.menu.add(price_item)
-            
-            # Add footer items
-            self.menu.add(rumps.separator)
-            self.menu.add(rumps.MenuItem("Refresh Now", callback=self.refresh_callback))
-            self.menu.add(rumps.separator)
-            self.menu.add(rumps.MenuItem("Quit", callback=self.quit_application))
-    
-    def background_update(self) -> None:
-        """Background thread to periodically fetch prices."""
+    def background_fetch_loop(self):
+        """Thread implementation: fetches data sleep loop."""
+        print("Background fetcher started.")
         while self._running:
             data = self.fetch_prices()
             if data:
-                with self._update_lock:
-                    self.price_data = data
-                    self.last_update = datetime.now().strftime("%H:%M:%S")
-                self.update_menu_items()
-            
-            # Sleep in small increments to allow quick shutdown
-            for _ in range(self.UPDATE_INTERVAL):
-                if not self._running:
-                    break
-                time.sleep(1)
-    
-    def start_price_updater(self) -> None:
-        """Start the background price updater thread."""
-        # Initial fetch in separate thread
-        threading.Thread(target=self.initial_fetch, daemon=True).start()
-        
-        # Start periodic updates
-        update_thread = threading.Thread(target=self.background_update, daemon=True)
-        update_thread.start()
-    
-    def initial_fetch(self) -> None:
-        """Fetch prices immediately on startup."""
-        time.sleep(0.5)  # Small delay to let UI initialize
-        data = self.fetch_prices()
-        if data:
-            with self._update_lock:
+                # Store data but DO NOT touch UI
                 self.price_data = data
-                self.last_update = datetime.now().strftime("%H:%M:%S")
-            self.update_menu_items()
+                self.last_update_str = datetime.now().strftime("%H:%M:%S")
+                # Signal UI to update
+                self.new_data_available = True
+            
+            # Sleep logic
+            for _ in range(self.UPDATE_INTERVAL):
+                if not self._running: return
+                time.sleep(1)
+
+    def ui_update_loop(self, _):
+        """Timer callback: effectively the 'Main Thread' safe zone."""
+        if self.new_data_available:
+            self.update_menu_view()
+            self.new_data_available = False
+            
+    def update_menu_view(self) -> None:
+        """Update the menu UI with cached data."""
+        # Update Status
+        self.status_item.title = f"🕐 Updated: {self.last_update_str}"
+        
+        # Update Items
+        for item_name, item_id in self.items.items():
+            item_id_str = str(item_id)
+            refs = self.item_refs.get(item_id)
+            
+            if not refs: continue
+            
+            if item_id_str in self.price_data:
+                item_data = self.price_data[item_id_str]
+                high = item_data.get('high', 0)
+                low = item_data.get('low', 0)
+                
+                if high and low:
+                    avg = (high + low) // 2
+                    
+                    # Update Titles
+                    refs['main'].title = f"{item_name}: {self.format_price(avg)} gp"
+                    refs['avg'].title = f"💰 Average: {self.format_price(avg)} gp"
+                    refs['high'].title = f"📈 High: {self.format_price(high)} gp"
+                    refs['low'].title = f"📉 Low: {self.format_price(low)} gp"
+            else:
+                refs['main'].title = f"{item_name}: N/A"
+
+    def open_price_chart(self, sender: rumps.MenuItem, item_id: int) -> None:
+        """Open OSRS Wiki price page in browser."""
+        url = f"https://prices.runescape.wiki/osrs/item/{item_id}"
+        webbrowser.open(url)
     
     def refresh_callback(self, sender: rumps.MenuItem) -> None:
-        """Handle manual refresh.
-        
-        Args:
-            sender: Menu item that triggered the callback
-        """
-        def refresh():
+        """Trigger an immediate background fetch."""
+        # We start a one-off thread to fetch immediately so we don't wait for the loop sleep
+        def one_off_refresh():
+            print("Manual refresh triggered")
             data = self.fetch_prices()
             if data:
-                with self._update_lock:
-                    self.price_data = data
-                    self.last_update = datetime.now().strftime("%H:%M:%S")
-                self.update_menu_items()
-        
-        threading.Thread(target=refresh, daemon=True).start()
+                self.price_data = data
+                self.last_update_str = datetime.now().strftime("%H:%M:%S")
+                self.new_data_available = True
+                
+        threading.Thread(target=one_off_refresh, daemon=True).start()
     
     def quit_application(self, sender: rumps.MenuItem) -> None:
-        """Clean shutdown of the application.
-        
-        Args:
-            sender: Menu item that triggered the callback
-        """
+        """Clean shutdown."""
         self._running = False
         rumps.quit_application()
 
