@@ -6,11 +6,13 @@ A macOS menu bar application that displays real-time OSRS Grand Exchange prices.
 
 import rumps
 import requests
+import os
 from datetime import datetime
 import threading
 import time
 import webbrowser
 from typing import Dict, Optional, Any
+from item_manager import ItemManager
 
 
 class OSRSGEMenuBar(rumps.App):
@@ -30,12 +32,8 @@ class OSRSGEMenuBar(rumps.App):
             quit_button=None
         )
         
-        # Popular OSRS items with their IDs
-        self.items: Dict[str, int] = {
-            "Old school bond": 13190,
-            "Cooked karambwan": 3144,
-            "Raw karambwan": 3142,
-        }
+        # Initialize Item Manager (Handles persistence & mapping)
+        self.item_manager = ItemManager()
         
         # State management
         self.price_data: Dict[str, Dict[str, Any]] = {}
@@ -47,8 +45,8 @@ class OSRSGEMenuBar(rumps.App):
         # Structure: {item_id: {'main': MenuItem, 'avg': MenuItem, 'high': MenuItem, 'low': MenuItem}}
         self.item_refs: Dict[int, Dict[str, rumps.MenuItem]] = {}
         
-        # Build the menu ONCE
-        self.build_static_menu()
+        # Build the menu
+        self.rebuild_menu()
         
         # Start background fetcher (Daemon thread)
         self.fetch_thread = threading.Thread(target=self.background_fetch_loop, daemon=True)
@@ -58,34 +56,61 @@ class OSRSGEMenuBar(rumps.App):
         self.timer = rumps.Timer(self.ui_update_loop, 1)
         self.timer.start()
 
-    def build_static_menu(self):
-        """Build the initial menu structure with references."""
+    def rebuild_menu(self):
+        """Completely (re)build the menu structure."""
+        self.menu.clear()
+        self.item_refs.clear()
+        
         self.menu.add(rumps.MenuItem("OSRS GE Prices", callback=None))
         self.menu.add(rumps.separator)
         
         # Status Item (Dynamic)
-        self.status_item = rumps.MenuItem("Loading prices...", callback=None)
+        self.status_item = rumps.MenuItem(f"🕐 Updated: {self.last_update_str}", callback=None)
         self.menu.add(self.status_item)
         self.menu.add(rumps.separator)
         
-        # Item Lists
-        for item_name, item_id in self.items.items():
+        # Item Lists from Watchlist
+        # We iterate over the ItemManager's watchlist
+        for item_name, item_id in self.item_manager.watchlist.items():
             # Create Main Item
-            main_item = rumps.MenuItem(f"{item_name}: ...", callback=None)
+            # We initialize with "..." or cached data if available
+            price_text = f"{item_name}: ..."
+            
+            # Check if we already have data for generic 'rebuild' (e.g. after adding item)
+            avg_text = "💰 Average: ..."
+            high_text = "📈 High: ..."
+            low_text = "📉 Low: ..."
+            
+            # (Optional) Pre-fill if we have data
+            item_id_str = str(item_id)
+            if item_id_str in self.price_data:
+                data = self.price_data[item_id_str]
+                high, low = data.get('high', 0), data.get('low', 0)
+                if high and low:
+                    avg = (high + low) // 2
+                    price_text = f"{item_name}: {self.format_price(avg)} gp"
+                    avg_text = f"💰 Average: {self.format_price(avg)} gp"
+                    high_text = f"📈 High: {self.format_price(high)} gp"
+                    low_text = f"📉 Low: {self.format_price(low)} gp"
+
+            main_item = rumps.MenuItem(price_text, callback=None)
             
             # Create Submenu Items
-            avg_item = rumps.MenuItem("💰 Average: ...", callback=None)
-            high_item = rumps.MenuItem("📈 High: ...", callback=None)
-            low_item = rumps.MenuItem("📉 Low: ...", callback=None)
+            avg_item = rumps.MenuItem(avg_text, callback=None)
+            high_item = rumps.MenuItem(high_text, callback=None)
+            low_item = rumps.MenuItem(low_text, callback=None)
             
-            # Action Item (we can recreate this or keep it static, static is fine)
-            # We need a closure for the callback
-            def make_callback(iid):
+            # Chart Action
+            def make_chart_callback(iid):
                 return lambda sender: self.open_price_chart(sender, iid)
-                
-            chart_item = rumps.MenuItem("📊 View Price Chart", callback=make_callback(item_id))
+            chart_item = rumps.MenuItem("📊 View Price Chart", callback=make_chart_callback(item_id))
             
-            # storage for updating
+            # Remove Action
+            def make_remove_callback(n):
+                return lambda sender: self.remove_item_callback(sender, n)
+            remove_item = rumps.MenuItem("❌ Remove Item", callback=make_remove_callback(item_name))
+            
+            # Storage for fast updating
             self.item_refs[item_id] = {
                 'main': main_item,
                 'avg': avg_item,
@@ -99,14 +124,16 @@ class OSRSGEMenuBar(rumps.App):
             main_item.add(low_item)
             main_item.add(rumps.separator)
             main_item.add(chart_item)
+            main_item.add(remove_item)
             
             # Add to Main Menu
             self.menu.add(main_item)
             
         # Footer
         self.menu.add(rumps.separator)
-        self.menu.add(rumps.MenuItem("Refresh Now", callback=self.refresh_callback))
+        self.menu.add(rumps.MenuItem("⚙️ Settings...", callback=self.open_settings))
         self.menu.add(rumps.separator)
+        self.menu.add(rumps.MenuItem("Refresh Now", callback=self.refresh_callback))
         self.menu.add(rumps.MenuItem("Quit", callback=self.quit_application))
     
     def format_price(self, price: int) -> str:
@@ -125,6 +152,8 @@ class OSRSGEMenuBar(rumps.App):
             url = f"{self.API_BASE_URL}/latest"
             headers = {'User-Agent': self.USER_AGENT}
             
+            # Only fetch simple validation or all items? 
+            # The /latest endpoint returns ALL items. That's fine.
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             
@@ -140,13 +169,10 @@ class OSRSGEMenuBar(rumps.App):
         while self._running:
             data = self.fetch_prices()
             if data:
-                # Store data but DO NOT touch UI
                 self.price_data = data
                 self.last_update_str = datetime.now().strftime("%H:%M:%S")
-                # Signal UI to update
                 self.new_data_available = True
             
-            # Sleep logic
             for _ in range(self.UPDATE_INTERVAL):
                 if not self._running: return
                 time.sleep(1)
@@ -159,16 +185,14 @@ class OSRSGEMenuBar(rumps.App):
             
     def update_menu_view(self) -> None:
         """Update the menu UI with cached data."""
-        # Update Status
         self.status_item.title = f"🕐 Updated: {self.last_update_str}"
         
-        # Update Items
-        for item_name, item_id in self.items.items():
-            item_id_str = str(item_id)
+        # Iterate over what we are CURRENTLY tracking
+        for item_name, item_id in self.item_manager.watchlist.items():
             refs = self.item_refs.get(item_id)
+            if not refs: continue # Should invoke rebuild if this happens often
             
-            if not refs: continue
-            
+            item_id_str = str(item_id)
             if item_id_str in self.price_data:
                 item_data = self.price_data[item_id_str]
                 high = item_data.get('high', 0)
@@ -176,14 +200,52 @@ class OSRSGEMenuBar(rumps.App):
                 
                 if high and low:
                     avg = (high + low) // 2
-                    
-                    # Update Titles
                     refs['main'].title = f"{item_name}: {self.format_price(avg)} gp"
                     refs['avg'].title = f"💰 Average: {self.format_price(avg)} gp"
                     refs['high'].title = f"📈 High: {self.format_price(high)} gp"
                     refs['low'].title = f"📉 Low: {self.format_price(low)} gp"
             else:
                 refs['main'].title = f"{item_name}: N/A"
+
+    def open_settings(self, sender) -> None:
+        """Launch the separate Settings GUI process."""
+        import subprocess
+        import sys
+        
+        # Check if already open
+        if hasattr(self, 'settings_process') and self.settings_process.poll() is None:
+            # Already running, bring to front? (Hard cross-process, just ignore or re-launch)
+            return
+
+        try:
+            # Launch in separate process using same python interpreter
+            # When frozen, sys.executable is the app bundle executable.
+            # We pass --settings to tell it to run the settings GUI instead of the main app.
+            self.settings_process = subprocess.Popen([sys.executable, "--settings"])
+            
+            # Start a timer to watch for it closing
+            self.settings_watcher = rumps.Timer(self.check_settings_closed, 1)
+            self.settings_watcher.start()
+        except Exception as e:
+            rumps.alert("Error", f"Could not open settings: {e}")
+
+    def check_settings_closed(self, sender):
+        """Timer callback to check if settings process finished."""
+        if hasattr(self, 'settings_process'):
+            if self.settings_process.poll() is not None:
+                # Process finished
+                self.settings_watcher.stop()
+                del self.settings_process
+                
+                # Reload config and rebuild menu
+                print("Settings closed, reloading config...")
+                self.item_manager.load_config()
+                self.rebuild_menu()
+
+    def remove_item_callback(self, sender, item_name: str) -> None:
+        """Remove item from watchlist."""
+        self.item_manager.remove_from_watchlist(item_name)
+        self.rebuild_menu()
 
     def open_price_chart(self, sender: rumps.MenuItem, item_id: int) -> None:
         """Open OSRS Wiki price page in browser."""
@@ -192,7 +254,6 @@ class OSRSGEMenuBar(rumps.App):
     
     def refresh_callback(self, sender: rumps.MenuItem) -> None:
         """Trigger an immediate background fetch."""
-        # We start a one-off thread to fetch immediately so we don't wait for the loop sleep
         def one_off_refresh():
             print("Manual refresh triggered")
             data = self.fetch_prices()
@@ -200,7 +261,6 @@ class OSRSGEMenuBar(rumps.App):
                 self.price_data = data
                 self.last_update_str = datetime.now().strftime("%H:%M:%S")
                 self.new_data_available = True
-                
         threading.Thread(target=one_off_refresh, daemon=True).start()
     
     def quit_application(self, sender: rumps.MenuItem) -> None:
@@ -209,10 +269,16 @@ class OSRSGEMenuBar(rumps.App):
         rumps.quit_application()
 
 
+
 def main():
     """Main entry point for the application."""
-    app = OSRSGEMenuBar()
-    app.run()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == '--settings':
+        import settings_gui
+        settings_gui.main()
+    else:
+        app = OSRSGEMenuBar()
+        app.run()
 
 
 if __name__ == "__main__":

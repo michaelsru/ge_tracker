@@ -10,6 +10,8 @@ from setuptools import setup
 APP = ['getracker.py']
 DATA_FILES = []
 OPTIONS = {
+    'argv_emulation': False,
+    'includes': ['settings_gui'],
     'plist': {
          'LSUIElement': True,
     }
