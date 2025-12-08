@@ -6,13 +6,14 @@ A macOS menu bar application that displays real-time OSRS Grand Exchange prices.
 
 import rumps
 import requests
-import os
 from datetime import datetime
 import threading
 import time
 import webbrowser
 from typing import Dict, Optional, Any
 from item_manager import ItemManager
+from settings_gui import start_settings
+import multiprocessing
 
 
 class OSRSGEMenuBar(rumps.App):
@@ -97,8 +98,11 @@ class OSRSGEMenuBar(rumps.App):
             
             # Create Submenu Items
             avg_item = rumps.MenuItem(avg_text, callback=None)
+            daily_vol_item = rumps.MenuItem("📊 Daily Vol: ...", callback=None)
             high_item = rumps.MenuItem(high_text, callback=None)
+            high_vol_item = rumps.MenuItem("📊 High Vol: ...", callback=None)
             low_item = rumps.MenuItem(low_text, callback=None)
+            low_vol_item = rumps.MenuItem("📊 Low Vol: ...", callback=None)
             
             # Chart Action
             def make_chart_callback(iid):
@@ -114,14 +118,22 @@ class OSRSGEMenuBar(rumps.App):
             self.item_refs[item_id] = {
                 'main': main_item,
                 'avg': avg_item,
-                'high': high_item, 
-                'low': low_item
+                'daily_vol': daily_vol_item,
+                'high': high_item,
+                'high_vol': high_vol_item,
+                'low': low_item,
+                'low_vol': low_vol_item
             }
             
             # Assemble Submenu
             main_item.add(avg_item)
+            main_item.add(daily_vol_item)
+            main_item.add(rumps.separator)
             main_item.add(high_item)
+            main_item.add(high_vol_item)
+            main_item.add(rumps.separator)
             main_item.add(low_item)
+            main_item.add(low_vol_item)
             main_item.add(rumps.separator)
             main_item.add(chart_item)
             main_item.add(remove_item)
@@ -147,18 +159,44 @@ class OSRSGEMenuBar(rumps.App):
         return str(price)
     
     def fetch_prices(self) -> Optional[Dict[str, Dict[str, Any]]]:
-        """Fetch prices from OSRS Wiki API."""
+        """Fetch prices from OSRS Wiki API (Latest + 5m Volume)."""
         try:
-            url = f"{self.API_BASE_URL}/latest"
             headers = {'User-Agent': self.USER_AGENT}
             
-            # Only fetch simple validation or all items? 
-            # The /latest endpoint returns ALL items. That's fine.
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
+            # 1. Fetch Latest Prices
+            url_latest = f"{self.API_BASE_URL}/latest"
+            resp_latest = requests.get(url_latest, headers=headers, timeout=10)
+            resp_latest.raise_for_status()
+            data_latest = resp_latest.json().get('data', {})
             
-            data = response.json()
-            return data.get('data', {})
+            # 2. Fetch 5m Volume Data
+            url_5m = f"{self.API_BASE_URL}/5m"
+            resp_5m = requests.get(url_5m, headers=headers, timeout=10)
+            resp_5m.raise_for_status()
+            data_5m = resp_5m.json().get('data', {})
+
+            # 3. Fetch 24h Volume Data
+            url_24h = f"{self.API_BASE_URL}/24h"
+            resp_24h = requests.get(url_24h, headers=headers, timeout=10)
+            resp_24h.raise_for_status()
+            data_24h = resp_24h.json().get('data', {})
+            
+            # 4. Merge Volume into Latest Data
+            for item_id, item_data in data_latest.items():
+                # 5m Volume
+                if item_id in data_5m:
+                    vol_data = data_5m[item_id]
+                    item_data['highVolume'] = vol_data.get('highPriceVolume', 0)
+                    item_data['lowVolume'] = vol_data.get('lowPriceVolume', 0)
+                
+                # 24h Volume
+                if item_id in data_24h:
+                    daily_data = data_24h[item_id]
+                    # Total daily volume = high vol + low vol
+                    daily_vol = daily_data.get('highPriceVolume', 0) + daily_data.get('lowPriceVolume', 0)
+                    item_data['dailyVolume'] = daily_vol
+            
+            return data_latest
         except Exception as e:
             print(f"Error fetching prices: {e}")
             return None
@@ -197,13 +235,19 @@ class OSRSGEMenuBar(rumps.App):
                 item_data = self.price_data[item_id_str]
                 high = item_data.get('high', 0)
                 low = item_data.get('low', 0)
+                high_vol = item_data.get('highVolume', 0)
+                low_vol = item_data.get('lowVolume', 0)
+                daily_vol = item_data.get('dailyVolume', 0)
                 
                 if high and low:
                     avg = (high + low) // 2
                     refs['main'].title = f"{item_name}: {self.format_price(avg)} gp"
                     refs['avg'].title = f"💰 Average: {self.format_price(avg)} gp"
+                    refs['daily_vol'].title = f"📊 Daily Vol: {daily_vol:,}"
                     refs['high'].title = f"📈 High: {self.format_price(high)} gp"
+                    refs['high_vol'].title = f"📊 High Vol: {high_vol:,}"
                     refs['low'].title = f"📉 Low: {self.format_price(low)} gp"
+                    refs['low_vol'].title = f"📊 Low Vol: {low_vol:,}"
             else:
                 refs['main'].title = f"{item_name}: N/A"
 
@@ -216,31 +260,17 @@ class OSRSGEMenuBar(rumps.App):
         if hasattr(self, 'settings_process') and self.settings_process.poll() is None:
             # Already running, bring to front? (Hard cross-process, just ignore or re-launch)
             return
-
         try:
-            # Launch in separate process using same python interpreter
-            # When frozen, sys.executable is the app bundle executable.
-            # We pass --settings to tell it to run the settings GUI instead of the main app.
-            self.settings_process = subprocess.Popen([sys.executable, "--settings"])
-            
-            # Start a timer to watch for it closing
-            self.settings_watcher = rumps.Timer(self.check_settings_closed, 1)
-            self.settings_watcher.start()
+            p = multiprocessing.Process(target=start_settings)
+            p.start()
+            p.join()
+
+            # Reload config and rebuild menu
+            print("Settings closed, reloading config...")
+            self.item_manager.load_config()
+            self.rebuild_menu()
         except Exception as e:
             rumps.alert("Error", f"Could not open settings: {e}")
-
-    def check_settings_closed(self, sender):
-        """Timer callback to check if settings process finished."""
-        if hasattr(self, 'settings_process'):
-            if self.settings_process.poll() is not None:
-                # Process finished
-                self.settings_watcher.stop()
-                del self.settings_process
-                
-                # Reload config and rebuild menu
-                print("Settings closed, reloading config...")
-                self.item_manager.load_config()
-                self.rebuild_menu()
 
     def remove_item_callback(self, sender, item_name: str) -> None:
         """Remove item from watchlist."""
@@ -268,18 +298,10 @@ class OSRSGEMenuBar(rumps.App):
         self._running = False
         rumps.quit_application()
 
-
-
 def main():
     """Main entry point for the application."""
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == '--settings':
-        import settings_gui
-        settings_gui.main()
-    else:
-        app = OSRSGEMenuBar()
-        app.run()
-
+    app = OSRSGEMenuBar()
+    app.run()
 
 if __name__ == "__main__":
     main()
