@@ -114,6 +114,16 @@ class ItemManager:
             del self.watchlist[name]
             self.save_config()
 
+    def remove_items_from_watchlist(self, names: List[str]) -> None:
+        """Remove multiple items from the watchlist at once."""
+        changed = False
+        for name in names:
+            if name in self.watchlist:
+                del self.watchlist[name]
+                changed = True
+        if changed:
+            self.save_config()
+
     def save_config(self) -> None:
         """Save the current watchlist to disk."""
         try:

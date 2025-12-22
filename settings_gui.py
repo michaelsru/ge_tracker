@@ -5,7 +5,8 @@ from item_manager import ItemManager
 class DragDropListbox(tk.Listbox):
     """A Listbox that supports drag-and-drop reordering."""
     def __init__(self, master, **kw):
-        kw['selectmode'] = tk.SINGLE
+        if 'selectmode' not in kw:
+            kw['selectmode'] = tk.SINGLE
         tk.Listbox.__init__(self, master, kw)
         self.bind('<Button-1>', self.click)
         self.bind('<B1-Motion>', self.drag)
@@ -55,9 +56,10 @@ class SettingsGUI:
         ttk.Label(left_frame, text="(Drag items to reorder)").pack(pady=0)
         
         # Use Custom DragDrop Listbox
-        self.watchlist_listbox = DragDropListbox(left_frame)
+        self.watchlist_listbox = DragDropListbox(left_frame, selectmode=tk.EXTENDED)
         self.watchlist_listbox.pack(fill=tk.BOTH, expand=True, padx=5)
         self.watchlist_listbox.on_reorder_callback = self.save_reorder
+        self.watchlist_listbox.bind('<BackSpace>', self.remove_selected)
         
         btn_remove = ttk.Button(left_frame, text="Remove Selected", command=self.remove_selected)
         btn_remove.pack(pady=5)
@@ -84,6 +86,7 @@ class SettingsGUI:
         ttk.Label(right_frame, text="Search Results:").pack(anchor='w', padx=5, pady=(10, 0))
         self.results_listbox = tk.Listbox(right_frame, selectmode=tk.EXTENDED)
         self.results_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.results_listbox.bind('<Return>', self.add_selected)
         
         btn_add = ttk.Button(right_frame, text="Add Selected to Watchlist", command=self.add_selected)
         btn_add.pack(pady=5)
@@ -113,14 +116,19 @@ class SettingsGUI:
         self.item_manager.watchlist = new_watchlist
         self.item_manager.save_config()
 
-    def remove_selected(self):
+    def remove_selected(self, event=None):
         selection = self.watchlist_listbox.curselection()
         if not selection:
             return
             
-        item_name = self.watchlist_listbox.get(selection[0])
-        self.item_manager.remove_from_watchlist(item_name)
-        self.refresh_watchlist_ui()
+        items_to_remove = []
+        for index in selection:
+            item_name = self.watchlist_listbox.get(index)
+            items_to_remove.append(item_name)
+            
+        if items_to_remove:
+            self.item_manager.remove_items_from_watchlist(items_to_remove)
+            self.refresh_watchlist_ui()
 
     def perform_search(self, event=None):
         query = self.search_var.get()
@@ -150,7 +158,7 @@ class SettingsGUI:
         if not found_any:
             self.results_listbox.insert(tk.END, "No results found.")
 
-    def add_selected(self):
+    def add_selected(self, event=None):
         selection = self.results_listbox.curselection()
         if not selection:
             return
