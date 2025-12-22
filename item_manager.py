@@ -102,6 +102,12 @@ class ItemManager:
         self.watchlist[name] = item_id
         self.save_config()
 
+    def add_items_to_watchlist(self, items: List[Tuple[str, int]]) -> None:
+        """Add multiple items to the watchlist at once."""
+        for name, item_id in items:
+            self.watchlist[name] = item_id
+        self.save_config()
+
     def remove_from_watchlist(self, name: str) -> None:
         """Remove an item from the watchlist."""
         if name in self.watchlist:

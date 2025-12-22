@@ -82,7 +82,7 @@ class SettingsGUI:
         
         # Results List
         ttk.Label(right_frame, text="Search Results:").pack(anchor='w', padx=5, pady=(10, 0))
-        self.results_listbox = tk.Listbox(right_frame)
+        self.results_listbox = tk.Listbox(right_frame, selectmode=tk.EXTENDED)
         self.results_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         btn_add = ttk.Button(right_frame, text="Add Selected to Watchlist", command=self.add_selected)
@@ -155,14 +155,17 @@ class SettingsGUI:
         if not selection:
             return
             
-        index = selection[0]
-        if index < len(self.current_search_results):
-            name, iid = self.current_search_results[index]
-            self.item_manager.add_to_watchlist(name, iid)
+        items_to_add = []
+        for index in selection:
+            if index < len(self.current_search_results):
+                items_to_add.append(self.current_search_results[index])
+        
+        if items_to_add:
+            self.item_manager.add_items_to_watchlist(items_to_add)
             self.refresh_watchlist_ui()
-            messagebox.showinfo("Success", f"Added {name} to watchlist.")
-        else:
-            pass
+            
+            # Optional: Clear selection or give feedback
+            self.results_listbox.selection_clear(0, tk.END)
 
 def start_settings():
     root = tk.Tk()
