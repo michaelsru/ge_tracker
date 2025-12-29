@@ -125,10 +125,14 @@ class ItemManager:
             self.save_config()
 
     def save_config(self) -> None:
-        """Save the current watchlist to disk."""
+        """Save the current watchlist to disk atomically."""
         try:
-            with open(self.CONFIG_FILE, 'w') as f:
+            # Write to a temp file first
+            temp_file = self.CONFIG_FILE + ".tmp"
+            with open(temp_file, 'w') as f:
                 json.dump(self.watchlist, f, indent=4)
+            # Atomic rename
+            os.replace(temp_file, self.CONFIG_FILE)
         except Exception as e:
             print(f"Error saving config: {e}")
 

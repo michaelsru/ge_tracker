@@ -41,6 +41,10 @@ class OSRSGEMenuBar(rumps.App):
         self.last_update_str: str = "Never"
         self.new_data_available: bool = False
         self._running = True
+
+        # Process Management
+        self.settings_process: Optional[multiprocessing.Process] = None
+        self.settings_queue: Optional[multiprocessing.Queue] = None
         
         # UI Component References
         # Structure: {item_id: {'main': MenuItem, 'avg': MenuItem, 'high': MenuItem, 'low': MenuItem}}
@@ -53,8 +57,9 @@ class OSRSGEMenuBar(rumps.App):
         self.fetch_thread = threading.Thread(target=self.background_fetch_loop, daemon=True)
         self.fetch_thread.start()
         
-        # Start UI updater (rumps Timer) - checks for data every 1 second
-        self.timer = rumps.Timer(self.ui_update_loop, 1)
+        # Start UI updater (rumps Timer)
+        # Polling every 0.1s ensures "instant" updates from settings without heavy CPU usage.
+        self.timer = rumps.Timer(self.ui_update_loop, 0.5)
         self.timer.start()
 
     def rebuild_menu(self):
@@ -110,9 +115,15 @@ class OSRSGEMenuBar(rumps.App):
             chart_item = rumps.MenuItem("📊 View Price Chart", callback=make_chart_callback(item_id))
             
             # Remove Action
-            def make_remove_callback(n):
-                return lambda sender: self.remove_item_callback(sender, n)
-            remove_item = rumps.MenuItem("❌ Remove Item", callback=make_remove_callback(item_name))
+            # Check if settings are open - strict lock
+            settings_open = self.settings_process and self.settings_process.is_alive()
+            
+            if settings_open:
+                remove_item = rumps.MenuItem("❌ Remove (Settings Open)", callback=None)
+            else:
+                def make_remove_callback(n):
+                    return lambda sender: self.remove_item_callback(sender, n)
+                remove_item = rumps.MenuItem("❌ Remove Item", callback=make_remove_callback(item_name))
             
             # Storage for fast updating
             self.item_refs[item_id] = {
@@ -215,6 +226,33 @@ class OSRSGEMenuBar(rumps.App):
 
     def ui_update_loop(self, _):
         """Timer callback: effectively the 'Main Thread' safe zone."""
+        # 1. Handle Settings Updates
+        if self.settings_queue:
+            try:
+                # Process all pending messages
+                while not self.settings_queue.empty():
+                    msg = self.settings_queue.get_nowait()
+                    if msg == "UPDATE":
+                        print("Received update signal from settings.")
+                        self.item_manager.load_config()
+                        self.rebuild_menu()
+            except Exception:
+                pass
+
+        # 2. Handle Process Cleanup (Restore 'Remove' button)
+        if hasattr(self, 'settings_process') and self.settings_process:
+            if not self.settings_process.is_alive():
+                 # Process just died? We need to ensure menu is unlocked.
+                 # We check a flag or just do a quick rebuild check if we were "locked"
+                 # Ideally we track state changes. For now, we can check if we hold a dead process object.
+                 # To avoid loop spam, we set it to None.
+                 print("Settings process closed.")
+                 self.settings_process = None
+                 self.settings_queue = None
+                 self.item_manager.load_config() # Final sync
+                 self.rebuild_menu()
+
+        # 3. Handle Price Data
         if self.new_data_available:
             self.update_menu_view()
             self.new_data_available = False
@@ -251,24 +289,29 @@ class OSRSGEMenuBar(rumps.App):
 
     def open_settings(self, sender) -> None:
         """Launch the separate Settings GUI process."""
-        import subprocess
-        import sys
+        import multiprocessing
         
         # Check if already open
-        if hasattr(self, 'settings_process') and self.settings_process.poll() is None:
-            # Already running, bring to front? (Hard cross-process, just ignore or re-launch)
+        if self.settings_process and self.settings_process.is_alive():
             return
-        try:
-            p = multiprocessing.Process(target=start_settings)
-            p.start()
-            p.join()
 
-            # Reload config and rebuild menu
-            print("Settings closed, reloading config...")
-            self.item_manager.load_config()
+        try:
+            self.settings_queue = multiprocessing.Queue()
+            self.settings_process = multiprocessing.Process(
+                target=start_settings, 
+                args=(self.settings_queue,),
+                daemon=True  # Ensure process dies if main app dies unexpectedly
+            )
+            self.settings_process.start()
+            
+            print("Settings opened in background.")
+            # Immediate rebuild to lock the "Remove" buttons
             self.rebuild_menu()
+            
         except Exception as e:
             rumps.alert("Error", f"Could not open settings: {e}")
+            self.settings_process = None
+            self.settings_queue = None
 
     def remove_item_callback(self, sender, item_name: str) -> None:
         """Remove item from watchlist."""
@@ -294,6 +337,23 @@ class OSRSGEMenuBar(rumps.App):
     def quit_application(self, sender: rumps.MenuItem) -> None:
         """Clean shutdown."""
         self._running = False
+        
+        # Kill settings process if open
+        if self.settings_process and self.settings_process.is_alive():
+            # Attempt to clean up queue to prevent "leaked semaphore" warnings
+            if self.settings_queue:
+                try:
+                    self.settings_queue.close()
+                    self.settings_queue.join_thread()
+                except Exception:
+                    pass
+            
+            try:
+                self.settings_process.terminate()
+                self.settings_process.join(timeout=0.2)
+            except Exception:
+                pass
+                
         rumps.quit_application()
 
 def main():

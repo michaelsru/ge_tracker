@@ -33,8 +33,9 @@ class DragDropListbox(tk.Listbox):
             self.on_reorder_callback()
 
 class SettingsGUI:
-    def __init__(self, root):
+    def __init__(self, root, queue=None):
         self.root = root
+        self.queue = queue
         self.root.title("GE Tracker Settings")
         self.root.geometry("600x400")
         
@@ -115,6 +116,15 @@ class SettingsGUI:
         
         self.item_manager.watchlist = new_watchlist
         self.item_manager.save_config()
+        self.notify_update()
+
+    def notify_update(self):
+        """Notify main process that config has changed."""
+        if self.queue:
+            try:
+                self.queue.put("UPDATE")
+            except Exception as e:
+                print(f"Error sending update: {e}")
 
     def remove_selected(self, event=None):
         selection = self.watchlist_listbox.curselection()
@@ -129,6 +139,7 @@ class SettingsGUI:
         if items_to_remove:
             self.item_manager.remove_items_from_watchlist(items_to_remove)
             self.refresh_watchlist_ui()
+            self.notify_update()
 
     def perform_search(self, event=None):
         query = self.search_var.get()
@@ -171,16 +182,17 @@ class SettingsGUI:
         if items_to_add:
             self.item_manager.add_items_to_watchlist(items_to_add)
             self.refresh_watchlist_ui()
+            self.notify_update()
             
             # Optional: Clear selection or give feedback
             self.results_listbox.selection_clear(0, tk.END)
 
-def start_settings():
+def start_settings(queue=None):
     root = tk.Tk()
     try:
         from AppKit import NSApplication
         NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
     except:
         pass
-    app = SettingsGUI(root)
+    app = SettingsGUI(root, queue)
     root.mainloop()
