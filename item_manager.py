@@ -17,8 +17,9 @@ class ItemManager:
         # Maps ID -> Name (loaded from API)
         self.id_to_name: Dict[int, str] = {}
         
-        # User's watchlist {Name: ID}
-        self.watchlist: Dict[str, int] = {}
+        # User's watchlist: List of dicts
+        # Schema: {'type': 'item', 'name': '...', 'id': 123} OR {'type': 'section', 'label': '...'}
+        self.watchlist: List[Dict] = []
         
         self.load_config()
         self.refresh_mappings()
@@ -99,30 +100,56 @@ class ItemManager:
 
     def add_to_watchlist(self, name: str, item_id: int) -> None:
         """Add an item to the user's watchlist."""
-        self.watchlist[name] = item_id
+        # Check if already exists to avoid dupes (optional, but good UX)
+        for entry in self.watchlist:
+            if entry.get('type') == 'item' and entry.get('id') == item_id:
+                return
+        
+        self.watchlist.append({
+            'type': 'item',
+            'name': name,
+            'id': item_id
+        })
         self.save_config()
 
     def add_items_to_watchlist(self, items: List[Tuple[str, int]]) -> None:
         """Add multiple items to the watchlist at once."""
+        existing_ids = {entry['id'] for entry in self.watchlist if entry.get('type') == 'item'}
+        
         for name, item_id in items:
-            self.watchlist[name] = item_id
+            if item_id not in existing_ids:
+                self.watchlist.append({
+                    'type': 'item',
+                    'name': name,
+                    'id': item_id
+                })
+                existing_ids.add(item_id)
+        self.save_config()
+        
+    def add_section(self, label: str) -> None:
+        """Add a new section divider."""
+        self.watchlist.append({
+            'type': 'section',
+            'label': label
+        })
         self.save_config()
 
     def remove_from_watchlist(self, name: str) -> None:
-        """Remove an item from the watchlist."""
-        if name in self.watchlist:
-            del self.watchlist[name]
-            self.save_config()
+        """Remove an item (or section) from the watchlist by name/label."""
+        self.watchlist = [
+            entry for entry in self.watchlist 
+            if not (entry.get('name') == name or entry.get('label') == name)
+        ]
+        self.save_config()
 
     def remove_items_from_watchlist(self, names: List[str]) -> None:
-        """Remove multiple items from the watchlist at once."""
-        changed = False
-        for name in names:
-            if name in self.watchlist:
-                del self.watchlist[name]
-                changed = True
-        if changed:
-            self.save_config()
+        """Remove multiple items/sections from the watchlist."""
+        names_set = set(names)
+        self.watchlist = [
+            entry for entry in self.watchlist 
+            if not (entry.get('name') in names_set or entry.get('label') in names_set)
+        ]
+        self.save_config()
 
     def save_config(self) -> None:
         """Save the current watchlist to disk atomically."""
@@ -137,19 +164,36 @@ class ItemManager:
             print(f"Error saving config: {e}")
 
     def load_config(self) -> None:
-        """Load the watchlist from disk."""
+        """Load the watchlist from disk, handling migration."""
         if not os.path.exists(self.CONFIG_FILE):
             # separate default
-            self.watchlist = {
-                "Old school bond": 13190,
-                "Cooked karambwan": 3144,
-                "Raw karambwan": 3142,
-            }
+            self.watchlist = [
+                {'type': 'item', 'name': "Old school bond", 'id': 13190},
+                {'type': 'item', 'name': "Cooked karambwan", 'id': 3144},
+                {'type': 'item', 'name': "Raw karambwan", 'id': 3142},
+            ]
             return
 
         try:
             with open(self.CONFIG_FILE, 'r') as f:
-                self.watchlist = json.load(f)
+                data = json.load(f)
+                
+            # Migration Logic: Dict -> List
+            if isinstance(data, dict):
+                print("Migrating config from Dict to List...")
+                new_list = []
+                for name, iid in data.items():
+                    new_list.append({
+                        'type': 'item',
+                        'name': name,
+                        'id': iid
+                    })
+                self.watchlist = new_list
+                # Save immediately to persist migration
+                self.save_config()
+            else:
+                self.watchlist = data
+                
         except Exception as e:
             print(f"Error loading config: {e}")
-            self.watchlist = {}
+            self.watchlist = []

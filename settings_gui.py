@@ -62,6 +62,9 @@ class SettingsGUI:
         self.watchlist_listbox.on_reorder_callback = self.save_reorder
         self.watchlist_listbox.bind('<BackSpace>', self.remove_selected)
         
+        btn_add_section = ttk.Button(left_frame, text="Add Section Divider", command=self.add_section_dialog)
+        btn_add_section.pack(pady=(5, 0))
+        
         btn_remove = ttk.Button(left_frame, text="Remove Selected", command=self.remove_selected)
         btn_remove.pack(pady=5)
         
@@ -99,24 +102,66 @@ class SettingsGUI:
     def refresh_watchlist_ui(self):
         """Reloads the watchlist listbox from item_manager."""
         self.watchlist_listbox.delete(0, tk.END)
-        # REMOVED SORT: Iterate directly to respect order
-        for name in self.item_manager.watchlist.keys():
-            self.watchlist_listbox.insert(tk.END, name)
+        # Iterate specifically over List[Dict]
+        for i, entry in enumerate(self.item_manager.watchlist):
+            if entry.get('type') == 'section':
+                label = f"--- {entry.get('label', 'Section').upper()} ---"
+                self.watchlist_listbox.insert(tk.END, label)
+                self.watchlist_listbox.itemconfig(i, {'fg': 'blue'})
+            else:
+                self.watchlist_listbox.insert(tk.END, entry.get('name', '???'))
 
     def save_reorder(self):
         """Called when listbox is reordered by user."""
-        # Reconstruct the watchlist dictionary based on new order
-        new_order_names = self.watchlist_listbox.get(0, tk.END)
-        new_watchlist = {}
+        # Reconstruct the watchlist list based on new order
+        # We need to map the visible text back to the original objects
+        # This is tricky because names might be duplicated or similar to sections.
+        # Strategy: We assume the user didn't rename items dynamically.
+        # We can try to match by name, but if we have dupes, order matters.
+        # But wait - we are dragging strings. We need to know which object was which.
+        # To simplify: We can rebuild by matching against the CURRENT pool of items.
         
-        for name in new_order_names:
-            # Get ID from old watchlist (it must exist)
-            if name in self.item_manager.watchlist:
-                new_watchlist[name] = self.item_manager.watchlist[name]
+        # A safer way relies on the index if we tracked it, but standard Listbox doesn't link objects.
+        # Let's map "Display String" -> "List of Candidate Objects"
         
-        self.item_manager.watchlist = new_watchlist
-        self.item_manager.save_config()
-        self.notify_update()
+        pool = list(self.item_manager.watchlist) # Shallow copy
+        new_watchlist = []
+        
+        current_names = self.watchlist_listbox.get(0, tk.END)
+        
+        for display_name in current_names:
+            # Find matching entry in pool
+            found_idx = -1
+            for i, entry in enumerate(pool):
+                # Check for Section match
+                if entry.get('type') == 'section':
+                    expected_label = f"--- {entry.get('label', '').upper()} ---"
+                    if display_name == expected_label:
+                        found_idx = i
+                        break
+                # Check for Item match
+                elif entry.get('type') == 'item':
+                    if display_name == entry.get('name'):
+                        found_idx = i
+                        break
+            
+            if found_idx != -1:
+                new_watchlist.append(pool.pop(found_idx))
+            else:
+                print(f"Warning: Could not match UI item '{display_name}' to data object")
+
+        if new_watchlist:
+            self.item_manager.watchlist = new_watchlist
+            self.item_manager.save_config()
+            self.notify_update()
+
+    def add_section_dialog(self):
+        from tkinter import simpledialog
+        label = simpledialog.askstring("New Section", "Enter section name:", parent=self.root)
+        if label:
+            self.item_manager.add_section(label)
+            self.refresh_watchlist_ui()
+            self.notify_update()
 
     def notify_update(self):
         """Notify main process that config has changed."""
@@ -137,7 +182,29 @@ class SettingsGUI:
             items_to_remove.append(item_name)
             
         if items_to_remove:
-            self.item_manager.remove_items_from_watchlist(items_to_remove)
+            # Pass strict list of names/labels
+            # We must be careful about distinguishing sections formatted string from raw name
+            # Actually remove_items_from_watchlist expects raw names/labels.
+            # We need to reverse-map the formatted string.
+            
+            real_names = []
+            # We iterate the CURRENT watchlist to find matches again (similar to save_reorder)
+            # Or just use the heuristic: if it starts with ---, extract label.
+            
+            for d_name in items_to_remove:
+                if d_name.startswith("--- ") and d_name.endswith(" ---"):
+                    # Section extraction
+                    label = d_name[4:-4].lower() # We uppercased it
+                    # Find matching section in watchlist matching this roughly
+                    # This is brittle. Better to search watchlist for case-insensitive match on label.
+                    for entry in self.item_manager.watchlist:
+                        if entry.get('type') == 'section' and entry.get('label').upper() == label.upper():
+                            real_names.append(entry.get('label'))
+                            break
+                else:
+                    real_names.append(d_name)
+
+            self.item_manager.remove_items_from_watchlist(real_names)
             self.refresh_watchlist_ui()
             self.notify_update()
 

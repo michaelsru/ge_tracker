@@ -76,8 +76,23 @@ class OSRSGEMenuBar(rumps.App):
         self.menu.add(rumps.separator)
         
         # Item Lists from Watchlist
-        # We iterate over the ItemManager's watchlist
-        for item_name, item_id in self.item_manager.watchlist.items():
+        # We iterate over the ItemManager's watchlist (List[Dict])
+        for entry in self.item_manager.watchlist:
+            # Handle Sections
+            if entry.get('type') == 'section':
+                self.menu.add(rumps.separator)
+                # Create a disabled item as a header
+                section_item = rumps.MenuItem(entry.get('label', 'Section').upper(), callback=None)
+                # section_item._menuitem.setEnabled_(False) # rumps doesn't expose strict disabling easily without ObjC
+                # Check if we can just add it.
+                self.menu.add(section_item)
+                continue
+                
+            # Handle Items
+            item_name = entry.get('name')
+            item_id = entry.get('id')
+            
+            if not item_name or not item_id: continue
             # Create Main Item
             # We initialize with "..." or cached data if available
             price_text = f"{item_name}: ..."
@@ -262,7 +277,12 @@ class OSRSGEMenuBar(rumps.App):
         self.status_item.title = f"🕐 Updated: {self.last_update_str}"
         
         # Iterate over what we are CURRENTLY tracking
-        for item_name, item_id in self.item_manager.watchlist.items():
+        for entry in self.item_manager.watchlist:
+            if entry.get('type') != 'item': continue
+            
+            item_name = entry.get('name')
+            item_id = entry.get('id')
+            
             refs = self.item_refs.get(item_id)
             if not refs: continue # Should invoke rebuild if this happens often
             
