@@ -134,6 +134,26 @@ class ItemManager:
         })
         self.save_config()
 
+    def set_section_inputs(self, section_label: str, item_ids: List[int]) -> None:
+        """Set the list of input item IDs for a section's profit calc."""
+        for entry in self.watchlist:
+            if entry.get('type') == 'section' and entry.get('label') == section_label:
+                stats = entry.get('profit_stats', {})
+                stats['inputs'] = item_ids
+                entry['profit_stats'] = stats
+                self.save_config()
+                return
+
+    def set_section_outputs(self, section_label: str, item_ids: List[int]) -> None:
+        """Set the list of output item IDs for a section's profit calc."""
+        for entry in self.watchlist:
+            if entry.get('type') == 'section' and entry.get('label') == section_label:
+                stats = entry.get('profit_stats', {})
+                stats['outputs'] = item_ids
+                entry['profit_stats'] = stats
+                self.save_config()
+                return
+
     def remove_from_watchlist(self, name: str) -> None:
         """Remove an item (or section) from the watchlist by name/label."""
         self.watchlist = [

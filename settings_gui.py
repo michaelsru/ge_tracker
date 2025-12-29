@@ -65,6 +65,13 @@ class SettingsGUI:
         btn_add_section = ttk.Button(left_frame, text="Add Section Divider", command=self.add_section_dialog)
         btn_add_section.pack(pady=(5, 0))
         
+        # Profit Config Buttons
+        profit_frame = ttk.Frame(left_frame)
+        profit_frame.pack(pady=(5, 0))
+        
+        ttk.Button(profit_frame, text="Set Inputs", command=self.set_selection_as_inputs).pack(side=tk.LEFT, padx=2)
+        ttk.Button(profit_frame, text="Set Outputs", command=self.set_selection_as_outputs).pack(side=tk.LEFT, padx=2)
+        
         btn_remove = ttk.Button(left_frame, text="Remove Selected", command=self.remove_selected)
         btn_remove.pack(pady=5)
         
@@ -106,6 +113,9 @@ class SettingsGUI:
         for i, entry in enumerate(self.item_manager.watchlist):
             if entry.get('type') == 'section':
                 label = f"--- {entry.get('label', 'Section').upper()} ---"
+                # Add indicator if profit is configured
+                if entry.get('profit_stats'):
+                    label += " [$]"
                 self.watchlist_listbox.insert(tk.END, label)
                 self.watchlist_listbox.itemconfig(i, {'fg': 'blue'})
             else:
@@ -135,8 +145,9 @@ class SettingsGUI:
             for i, entry in enumerate(pool):
                 # Check for Section match
                 if entry.get('type') == 'section':
-                    expected_label = f"--- {entry.get('label', '').upper()} ---"
-                    if display_name == expected_label:
+                    base_label = f"--- {entry.get('label', '').upper()} ---"
+                    # Match against base label OR label with profit indicator
+                    if display_name == base_label or display_name == (base_label + " [$]"):
                         found_idx = i
                         break
                 # Check for Item match
@@ -162,6 +173,79 @@ class SettingsGUI:
             self.item_manager.add_section(label)
             self.refresh_watchlist_ui()
             self.notify_update()
+
+    def get_parent_section_for_items(self, indices):
+        """Find the common section above the selected items."""
+        # We need to map UI indices to watchlist indices (1:1)
+        # We assume the user selected items. We walk UP from the first item to find a section.
+        # But wait - if they selected items from multiple sections, which one?
+        # Logic: Use the LAST selected item, walk up to find its section.
+        # OR: Ensure all items belong to same section.
+        # Let's simple: Use the first item's section.
+        
+        if not indices: return None, []
+        
+        first_idx = indices[0]
+        # Walk backwards from first_idx
+        section_label = None
+        for i in range(first_idx, -1, -1):
+            entry = self.item_manager.watchlist[i]
+            if entry.get('type') == 'section':
+                section_label = entry.get('label')
+                break
+        
+        if not section_label:
+            return None, []
+
+        # Validate entries are items
+        item_ids = []
+        for i in indices:
+            if i >= len(self.item_manager.watchlist): continue
+            entry = self.item_manager.watchlist[i]
+            if entry.get('type') == 'item':
+                item_ids.append(entry.get('id'))
+        
+        return section_label, item_ids
+
+    def set_selection_as_inputs(self):
+        selection = self.watchlist_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("Select Items", "Please select input items first.")
+            return
+            
+        label, ids = self.get_parent_section_for_items(selection)
+        if not label:
+            messagebox.showerror("Error", "Could not find a parent section for these items.")
+            return
+            
+        if not ids:
+             messagebox.showerror("Error", "Selected entries must be items.")
+             return
+             
+        self.item_manager.set_section_inputs(label, ids)
+        self.refresh_watchlist_ui()
+        self.notify_update()
+        messagebox.showinfo("Success", f"Set {len(ids)} items as INPUTS for '{label}'.")
+
+    def set_selection_as_outputs(self):
+        selection = self.watchlist_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("Select Items", "Please select output items first.")
+            return
+            
+        label, ids = self.get_parent_section_for_items(selection)
+        if not label:
+            messagebox.showerror("Error", "Could not find a parent section for these items.")
+            return
+            
+        if not ids:
+             messagebox.showerror("Error", "Selected entries must be items.")
+             return
+             
+        self.item_manager.set_section_outputs(label, ids)
+        self.refresh_watchlist_ui()
+        self.notify_update()
+        messagebox.showinfo("Success", f"Set {len(ids)} items as OUTPUTS for '{label}'.")
 
     def notify_update(self):
         """Notify main process that config has changed."""

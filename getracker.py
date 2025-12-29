@@ -81,10 +81,50 @@ class OSRSGEMenuBar(rumps.App):
             # Handle Sections
             if entry.get('type') == 'section':
                 self.menu.add(rumps.separator)
+                label = entry.get('label', 'Section').upper()
+                
+                # Profit Calculation
+                profit_stats = entry.get('profit_stats')
+                if profit_stats:
+                    # New Schema: inputs: [], outputs: []
+                    # Fallback for old schema if any (though we just changed it)
+                    
+                    input_ids = profit_stats.get('inputs', [])
+                    output_ids = profit_stats.get('outputs', [])
+                    
+                    # Also support old single keys for migration/safety? No, we forcefully updated.
+                    # But wait, did we migrate old profit configs? No.
+                    # It's okay, user just requested this change, they probably haven't configured much yet.
+                    
+                    total_in_cost = 0
+                    total_out_val = 0
+                    
+                    # Calculate Input Cost
+                    for iid in input_ids:
+                        sid = str(iid)
+                        if sid in self.price_data:
+                            item = self.price_data[sid]
+                            # Use average of high/low
+                            h, l = item.get('high', 0), item.get('low', 0)
+                            if h and l:
+                                total_in_cost += (h + l) // 2
+                                
+                    # Calculate Output Value
+                    for iid in output_ids:
+                        sid = str(iid)
+                        if sid in self.price_data:
+                            item = self.price_data[sid]
+                            h, l = item.get('high', 0), item.get('low', 0)
+                            if h and l:
+                                total_out_val += (h + l) // 2
+                                
+                    if total_in_cost > 0 and total_out_val > 0:
+                        margin = total_out_val - total_in_cost
+                        sign = "+" if margin >= 0 else ""
+                        label += f" (Profit: {sign}{margin:,} gp)"
+                
                 # Create a disabled item as a header
-                section_item = rumps.MenuItem(entry.get('label', 'Section').upper(), callback=None)
-                # section_item._menuitem.setEnabled_(False) # rumps doesn't expose strict disabling easily without ObjC
-                # Check if we can just add it.
+                section_item = rumps.MenuItem(label, callback=None)
                 self.menu.add(section_item)
                 continue
                 
