@@ -154,6 +154,14 @@ class ItemManager:
                 self.save_config()
                 return
 
+    def rename_section(self, old_label: str, new_label: str) -> None:
+        """Rename an existing section."""
+        for entry in self.watchlist:
+            if entry.get('type') == 'section' and entry.get('label') == old_label:
+                entry['label'] = new_label
+                self.save_config()
+                return
+
     def remove_from_watchlist(self, name: str) -> None:
         """Remove an item (or section) from the watchlist by name/label."""
         self.watchlist = [

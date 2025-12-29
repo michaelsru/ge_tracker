@@ -65,6 +65,9 @@ class SettingsGUI:
         btn_add_section = ttk.Button(left_frame, text="Add Section Divider", command=self.add_section_dialog)
         btn_add_section.pack(pady=(5, 0))
         
+        btn_rename_section = ttk.Button(left_frame, text="Rename Section", command=self.rename_section_dialog)
+        btn_rename_section.pack(pady=(5, 0))
+        
         # Profit Config Buttons
         profit_frame = ttk.Frame(left_frame)
         profit_frame.pack(pady=(5, 0))
@@ -171,6 +174,30 @@ class SettingsGUI:
         label = simpledialog.askstring("New Section", "Enter section name:", parent=self.root)
         if label:
             self.item_manager.add_section(label)
+            self.refresh_watchlist_ui()
+            self.notify_update()
+
+    def rename_section_dialog(self):
+        """Rename the selected section."""
+        selection = self.watchlist_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("Select Section", "Please select a section to rename.")
+            return
+
+        idx = selection[0]
+        if idx >= len(self.item_manager.watchlist): return
+
+        entry = self.item_manager.watchlist[idx]
+        if entry.get('type') != 'section':
+            messagebox.showinfo("Not a Section", "Please select a section divider.")
+            return
+            
+        old_label = entry.get('label')
+        from tkinter import simpledialog
+        new_label = simpledialog.askstring("Rename Section", "Enter new section name:", initialvalue=old_label, parent=self.root)
+        
+        if new_label and new_label != old_label:
+            self.item_manager.rename_section(old_label, new_label)
             self.refresh_watchlist_ui()
             self.notify_update()
 
