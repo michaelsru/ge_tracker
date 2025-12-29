@@ -154,8 +154,6 @@ class OSRSGEMenuBar(rumps.App):
             return f"{price/1_000_000_000:.2f}B"
         elif price >= 1_000_000:
             return f"{price/1_000_000:.2f}M"
-        elif price >= 1_000:
-            return f"{price/1_000:.1f}K"
         return str(price)
     
     def fetch_prices(self) -> Optional[Dict[str, Dict[str, Any]]]:
