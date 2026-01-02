@@ -50,6 +50,10 @@ class OSRSGEMenuBar(rumps.App):
         # Structure: {item_id: {'main': MenuItem, 'avg': MenuItem, 'high': MenuItem, 'low': MenuItem}}
         self.item_refs: Dict[int, Dict[str, rumps.MenuItem]] = {}
         
+        # Track section items for real-time profit updates
+        # List of tuples: (config_entry, menu_item)
+        self.section_refs: list[tuple[dict, rumps.MenuItem]] = []
+        
         # Build the menu
         self.rebuild_menu()
         
@@ -66,6 +70,7 @@ class OSRSGEMenuBar(rumps.App):
         """Completely (re)build the menu structure."""
         self.menu.clear()
         self.item_refs.clear()
+        self.section_refs.clear()
         
         self.menu.add(rumps.MenuItem("OSRS GE Prices", callback=None))
         self.menu.add(rumps.separator)
@@ -86,46 +91,19 @@ class OSRSGEMenuBar(rumps.App):
                 # Profit Calculation
                 profit_stats = entry.get('profit_stats')
                 if profit_stats:
-                    # New Schema: inputs: [], outputs: []
-                    # Fallback for old schema if any (though we just changed it)
-                    
-                    input_ids = profit_stats.get('inputs', [])
-                    output_ids = profit_stats.get('outputs', [])
-                    
-                    # Also support old single keys for migration/safety? No, we forcefully updated.
-                    # But wait, did we migrate old profit configs? No.
-                    # It's okay, user just requested this change, they probably haven't configured much yet.
-                    
-                    total_in_cost = 0
-                    total_out_val = 0
-                    
-                    # Calculate Input Cost
-                    for iid in input_ids:
-                        sid = str(iid)
-                        if sid in self.price_data:
-                            item = self.price_data[sid]
-                            # Use average of high/low
-                            h, l = item.get('high', 0), item.get('low', 0)
-                            if h and l:
-                                total_in_cost += (h + l) // 2
-                                
-                    # Calculate Output Value
-                    for iid in output_ids:
-                        sid = str(iid)
-                        if sid in self.price_data:
-                            item = self.price_data[sid]
-                            h, l = item.get('high', 0), item.get('low', 0)
-                            if h and l:
-                                total_out_val += (h + l) // 2
-                                
-                    if total_in_cost > 0 and total_out_val > 0:
-                        margin = total_out_val - total_in_cost
+                    margin = self.calculate_section_profit(entry)
+                    if margin != 0:
                         sign = "+" if margin >= 0 else ""
                         label += f" (Profit: {sign}{margin:,} gp)"
                 
                 # Create a disabled item as a header
                 section_item = rumps.MenuItem(label, callback=None)
                 self.menu.add(section_item)
+                
+                # Track for updates
+                if profit_stats:
+                    self.section_refs.append((entry, section_item))
+                    
                 continue
                 
             # Handle Items
@@ -214,6 +192,42 @@ class OSRSGEMenuBar(rumps.App):
         self.menu.add(rumps.MenuItem("Refresh Now", callback=self.refresh_callback))
         self.menu.add(rumps.MenuItem("Quit", callback=self.quit_application))
     
+    def calculate_section_profit(self, entry: Dict) -> int:
+        """Calculate the current profit margin for a section entry."""
+        profit_stats = entry.get('profit_stats')
+        if not profit_stats:
+            return 0
+            
+        input_ids = profit_stats.get('inputs', [])
+        output_ids = profit_stats.get('outputs', [])
+        
+        total_in_cost = 0
+        total_out_val = 0
+        
+        # Calculate Input Cost
+        for iid in input_ids:
+            sid = str(iid)
+            if sid in self.price_data:
+                item = self.price_data[sid]
+                # Use average of high/low
+                h, l = item.get('high', 0), item.get('low', 0)
+                if h and l:
+                    total_in_cost += (h + l) // 2
+                    
+        # Calculate Output Value
+        for iid in output_ids:
+            sid = str(iid)
+            if sid in self.price_data:
+                item = self.price_data[sid]
+                h, l = item.get('high', 0), item.get('low', 0)
+                if h and l:
+                    total_out_val += (h + l) // 2
+                    
+        if total_in_cost > 0 and total_out_val > 0:
+            return total_out_val - total_in_cost
+            
+        return 0
+
     def format_price(self, price: int) -> str:
         """Format price with K/M/B suffixes."""
         if price >= 1_000_000_000:
@@ -346,6 +360,19 @@ class OSRSGEMenuBar(rumps.App):
                     refs['low_vol'].title = f"📊 Low Vol: {low_vol:,}"
             else:
                 refs['main'].title = f"{item_name}: N/A"
+
+        # Update Section Profits
+        for entry, section_item in self.section_refs:
+            label = entry.get('label', 'Section').upper()
+            margin = self.calculate_section_profit(entry)
+            
+            if margin != 0:
+                sign = "+" if margin >= 0 else ""
+                label += f" (Profit: {sign}{margin:,} gp)"
+            
+            # Update title if changed (rumps might optimize this, but good to be explicit)
+            if section_item.title != label:
+                section_item.title = label
 
     def open_settings(self, sender) -> None:
         """Launch the separate Settings GUI process."""
