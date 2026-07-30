@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+tinyflux
+requests
+pydantic
+apscheduler

@@ -1,0 +1,144 @@
+[
+    {
+        "id": "karambwan_cooking",
+        "name": "Cooking Karambwan",
+        "inputs": [3142],
+        "outputs": [3144],
+        "tags": ["cooking", "food"]
+    },
+    {
+        "id": "clean_guam",
+        "name": "Guam leaf",
+        "inputs": [199],
+        "outputs": [249],
+        "tags": ["herblore"],
+        "level": 3,
+        "xp": 2.5
+    },
+    {
+        "id": "clean_marrentill",
+        "name": "Marrentill",
+        "inputs": [201],
+        "outputs": [251],
+        "tags": ["herblore"],
+        "level": 11,
+        "xp": 3.8
+    },
+    {
+        "id": "clean_tarromin",
+        "name": "Tarromin",
+        "inputs": [203],
+        "outputs": [253],
+        "tags": ["herblore"],
+        "level": 20,
+        "xp": 5.0
+    },
+    {
+        "id": "clean_harralander",
+        "name": "Harralander",
+        "inputs": [205],
+        "outputs": [255],
+        "tags": ["herblore"],
+        "level": 25,
+        "xp": 6.3
+    },
+    {
+        "id": "clean_ranarr",
+        "name": "Ranarr weed",
+        "inputs": [207],
+        "outputs": [257],
+        "tags": ["herblore"],
+        "level": 30,
+        "xp": 7.5
+    },
+    {
+        "id": "clean_toadflax",
+        "name": "Toadflax",
+        "inputs": [3049],
+        "outputs": [2998],
+        "tags": ["herblore"],
+        "level": 40,
+        "xp": 8.0
+    },
+    {
+        "id": "clean_irit",
+        "name": "Irit leaf",
+        "inputs": [209],
+        "outputs": [259],
+        "tags": ["herblore"],
+        "level": 48,
+        "xp": 8.8
+    },
+    {
+        "id": "clean_avantoe",
+        "name": "Avantoe",
+        "inputs": [211],
+        "outputs": [261],
+        "tags": ["herblore"],
+        "level": 54,
+        "xp": 10.0
+    },
+    {
+        "id": "clean_kwuarm",
+        "name": "Kwuarm",
+        "inputs": [213],
+        "outputs": [263],
+        "tags": ["herblore"],
+        "level": 58,
+        "xp": 11.3
+    },
+    {
+        "id": "clean_huasca",
+        "name": "Huasca",
+        "inputs": [28687],
+        "outputs": [28689],
+        "tags": ["herblore"],
+        "level": 59,
+        "xp": 11.8
+    },
+    {
+        "id": "clean_snapdragon",
+        "name": "Snapdragon",
+        "inputs": [3051],
+        "outputs": [3000],
+        "tags": ["herblore"],
+        "level": 65,
+        "xp": 11.8
+    },
+    {
+        "id": "clean_cadantine",
+        "name": "Cadantine",
+        "inputs": [215],
+        "outputs": [265],
+        "tags": ["herblore"],
+        "level": 67,
+        "xp": 12.5
+    },
+    {
+        "id": "clean_lantadyme",
+        "name": "Lantadyme",
+        "inputs": [2485],
+        "outputs": [2481],
+        "tags": ["herblore"],
+        "level": 70,
+        "xp": 13.1
+    },
+    {
+        "id": "clean_dwarf_weed",
+        "name": "Dwarf weed",
+        "inputs": [217],
+        "outputs": [267],
+        "tags": ["herblore"],
+        "level": 75,
+        "xp": 13.8
+    },
+    {
+        "id": "clean_torstol",
+        "name": "Torstol",
+        "inputs": [219],
+        "outputs": [269],
+        "tags": ["herblore"],
+        "level": 75,
+        "xp": 15.0
+    }
+]
