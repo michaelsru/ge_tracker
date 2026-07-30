@@ -15,6 +15,8 @@ class Item(BaseModel):
 class ItemDetail(BaseModel):
     id: int
     name: str
+    price: Optional[int] = None
+    qty: Optional[int] = 1
 
 class Recipe(BaseModel):
     id: str
@@ -33,6 +35,7 @@ class Recipe(BaseModel):
     output_price: Optional[int] = None
     input_volume: Optional[int] = None   # daily grimy buy volume
     output_volume: Optional[int] = None  # daily clean sell volume
+    hidden: Optional[bool] = False
 
 class PricePoint(BaseModel):
     timestamp: int

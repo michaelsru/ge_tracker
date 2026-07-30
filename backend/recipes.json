@@ -1,143 +1,557 @@
 [
     {
+        "id": "cut_opal_bolt_tips",
+        "name": "Opal bolt tips",
+        "inputs": [
+            1609
+        ],
+        "outputs": [
+            45
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 11,
+        "xp": 1.5
+    },
+    {
+        "id": "cut_jade_bolt_tips",
+        "name": "Jade bolt tips",
+        "inputs": [
+            1611
+        ],
+        "outputs": [
+            9187
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 26,
+        "xp": 2.0,
+        "hidden": true
+    },
+    {
+        "id": "cut_pearl_bolt_tips",
+        "name": "Pearl bolt tips",
+        "inputs": [
+            411
+        ],
+        "outputs": [
+            46
+        ],
+        "output_qty": 6,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 41,
+        "xp": 3.2,
+        "hidden": true
+    },
+    {
+        "id": "cut_topaz_bolt_tips",
+        "name": "Topaz bolt tips",
+        "inputs": [
+            1613
+        ],
+        "outputs": [
+            9188
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 48,
+        "xp": 3.9,
+        "hidden": true
+    },
+    {
+        "id": "cut_sapphire_bolt_tips",
+        "name": "Sapphire bolt tips",
+        "inputs": [
+            1607
+        ],
+        "outputs": [
+            9189
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 56,
+        "xp": 4.0
+    },
+    {
+        "id": "cut_emerald_bolt_tips",
+        "name": "Emerald bolt tips",
+        "inputs": [
+            1605
+        ],
+        "outputs": [
+            9190
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 58,
+        "xp": 5.5
+    },
+    {
+        "id": "cut_ruby_bolt_tips",
+        "name": "Ruby bolt tips",
+        "inputs": [
+            1603
+        ],
+        "outputs": [
+            9191
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 63,
+        "xp": 6.3
+    },
+    {
+        "id": "cut_diamond_bolt_tips",
+        "name": "Diamond bolt tips",
+        "inputs": [
+            1601
+        ],
+        "outputs": [
+            9192
+        ],
+        "output_qty": 12,
+        "tags": [
+            "fletching - cutting gems"
+        ],
+        "level": 65,
+        "xp": 7.0
+    },
+    {
+        "id": "fletch_broad_bolts",
+        "name": "Broad bolts",
+        "inputs": [
+            11876,
+            314
+        ],
+        "outputs": [
+            11875
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 55,
+        "xp": 0.1
+    },
+    {
+        "id": "fletch_opal_dragon_bolts",
+        "name": "Opal dragon bolts",
+        "inputs": [
+            45,
+            21905
+        ],
+        "outputs": [
+            21955
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 1.6,
+        "hidden": true
+    },
+    {
+        "id": "fletch_jade_dragon_bolts",
+        "name": "Jade dragon bolts",
+        "inputs": [
+            9187,
+            21905
+        ],
+        "outputs": [
+            21957
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 2.4,
+        "hidden": true
+    },
+    {
+        "id": "fletch_pearl_dragon_bolts",
+        "name": "Pearl dragon bolts",
+        "inputs": [
+            46,
+            21905
+        ],
+        "outputs": [
+            21959
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 3.2,
+        "hidden": true
+    },
+    {
+        "id": "fletch_topaz_dragon_bolts",
+        "name": "Topaz dragon bolts",
+        "inputs": [
+            9188,
+            21905
+        ],
+        "outputs": [
+            21961
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 4.0,
+        "hidden": true
+    },
+    {
+        "id": "fletch_sapphire_dragon_bolts",
+        "name": "Sapphire dragon bolts",
+        "inputs": [
+            9189,
+            21905
+        ],
+        "outputs": [
+            21963
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 4.7,
+        "hidden": true
+    },
+    {
+        "id": "fletch_emerald_dragon_bolts",
+        "name": "Emerald dragon bolts",
+        "inputs": [
+            9190,
+            21905
+        ],
+        "outputs": [
+            21965
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 5.5,
+        "hidden": true
+    },
+    {
+        "id": "fletch_ruby_dragon_bolts",
+        "name": "Ruby dragon bolts",
+        "inputs": [
+            9191,
+            21905
+        ],
+        "outputs": [
+            21967
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 6.3
+    },
+    {
+        "id": "fletch_diamond_dragon_bolts",
+        "name": "Diamond dragon bolts",
+        "inputs": [
+            9192,
+            21905
+        ],
+        "outputs": [
+            21969
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 7.0
+    },
+    {
+        "id": "fletch_dragonstone_dragon_bolts",
+        "name": "Dragonstone dragon bolts",
+        "inputs": [
+            9193,
+            21905
+        ],
+        "outputs": [
+            21971
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 8.2,
+        "hidden": true
+    },
+    {
+        "id": "fletch_onyx_dragon_bolts",
+        "name": "Onyx dragon bolts",
+        "inputs": [
+            9194,
+            21905
+        ],
+        "outputs": [
+            21973
+        ],
+        "tags": [
+            "fletching"
+        ],
+        "level": 84,
+        "xp": 9.4,
+        "hidden": true
+    },
+    {
         "id": "karambwan_cooking",
         "name": "Cooking Karambwan",
-        "inputs": [3142],
-        "outputs": [3144],
-        "tags": ["cooking", "food"]
+        "inputs": [
+            3142
+        ],
+        "outputs": [
+            3144
+        ],
+        "tags": [
+            "cooking",
+            "food"
+        ],
+        "level": 30,
+        "xp": 190
     },
     {
         "id": "clean_guam",
         "name": "Guam leaf",
-        "inputs": [199],
-        "outputs": [249],
-        "tags": ["herblore"],
+        "inputs": [
+            199
+        ],
+        "outputs": [
+            249
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 3,
         "xp": 2.5
     },
     {
         "id": "clean_marrentill",
         "name": "Marrentill",
-        "inputs": [201],
-        "outputs": [251],
-        "tags": ["herblore"],
+        "inputs": [
+            201
+        ],
+        "outputs": [
+            251
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 11,
         "xp": 3.8
     },
     {
         "id": "clean_tarromin",
         "name": "Tarromin",
-        "inputs": [203],
-        "outputs": [253],
-        "tags": ["herblore"],
+        "inputs": [
+            203
+        ],
+        "outputs": [
+            253
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 20,
         "xp": 5.0
     },
     {
         "id": "clean_harralander",
         "name": "Harralander",
-        "inputs": [205],
-        "outputs": [255],
-        "tags": ["herblore"],
+        "inputs": [
+            205
+        ],
+        "outputs": [
+            255
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 25,
         "xp": 6.3
     },
     {
         "id": "clean_ranarr",
         "name": "Ranarr weed",
-        "inputs": [207],
-        "outputs": [257],
-        "tags": ["herblore"],
+        "inputs": [
+            207
+        ],
+        "outputs": [
+            257
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 30,
         "xp": 7.5
     },
     {
         "id": "clean_toadflax",
         "name": "Toadflax",
-        "inputs": [3049],
-        "outputs": [2998],
-        "tags": ["herblore"],
+        "inputs": [
+            3049
+        ],
+        "outputs": [
+            2998
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 40,
         "xp": 8.0
     },
     {
         "id": "clean_irit",
         "name": "Irit leaf",
-        "inputs": [209],
-        "outputs": [259],
-        "tags": ["herblore"],
+        "inputs": [
+            209
+        ],
+        "outputs": [
+            259
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 48,
         "xp": 8.8
     },
     {
         "id": "clean_avantoe",
         "name": "Avantoe",
-        "inputs": [211],
-        "outputs": [261],
-        "tags": ["herblore"],
+        "inputs": [
+            211
+        ],
+        "outputs": [
+            261
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 54,
         "xp": 10.0
     },
     {
         "id": "clean_kwuarm",
         "name": "Kwuarm",
-        "inputs": [213],
-        "outputs": [263],
-        "tags": ["herblore"],
+        "inputs": [
+            213
+        ],
+        "outputs": [
+            263
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 58,
         "xp": 11.3
     },
     {
         "id": "clean_huasca",
         "name": "Huasca",
-        "inputs": [28687],
-        "outputs": [28689],
-        "tags": ["herblore"],
+        "inputs": [
+            28687
+        ],
+        "outputs": [
+            28689
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 59,
         "xp": 11.8
     },
     {
         "id": "clean_snapdragon",
         "name": "Snapdragon",
-        "inputs": [3051],
-        "outputs": [3000],
-        "tags": ["herblore"],
+        "inputs": [
+            3051
+        ],
+        "outputs": [
+            3000
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 65,
         "xp": 11.8
     },
     {
         "id": "clean_cadantine",
         "name": "Cadantine",
-        "inputs": [215],
-        "outputs": [265],
-        "tags": ["herblore"],
+        "inputs": [
+            215
+        ],
+        "outputs": [
+            265
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 67,
         "xp": 12.5
     },
     {
         "id": "clean_lantadyme",
         "name": "Lantadyme",
-        "inputs": [2485],
-        "outputs": [2481],
-        "tags": ["herblore"],
+        "inputs": [
+            2485
+        ],
+        "outputs": [
+            2481
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 70,
         "xp": 13.1
     },
     {
         "id": "clean_dwarf_weed",
         "name": "Dwarf weed",
-        "inputs": [217],
-        "outputs": [267],
-        "tags": ["herblore"],
+        "inputs": [
+            217
+        ],
+        "outputs": [
+            267
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 75,
         "xp": 13.8
     },
     {
         "id": "clean_torstol",
         "name": "Torstol",
-        "inputs": [219],
-        "outputs": [269],
-        "tags": ["herblore"],
+        "inputs": [
+            219
+        ],
+        "outputs": [
+            269
+        ],
+        "tags": [
+            "herblore"
+        ],
         "level": 75,
         "xp": 15.0
     }

@@ -5,6 +5,96 @@
   overflow-x: auto;
 }
 
+.herb-config {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.herb-config-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.herb-config-input {
+  width: 5rem;
+  padding: 0.25rem 0.5rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+  text-align: right;
+  transition: border-color 0.15s;
+}
+
+.herb-config-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.herb-config-rate {
+  font-size: 0.75rem;
+  color: #475569;
+  font-family: ui-monospace, monospace;
+}
+
+.herb-config-save {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.herb-config-save:hover {
+  border-color: #3b82f6;
+  color: #e2e8f0;
+}
+
+.herb-config-save.saved {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.herb-hide-btn {
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.herb-hide-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.herb-row-hidden {
+  opacity: 0.4;
+}
+
+.col-center {
+  text-align: center;
+}
+
 .herb-table {
   width: 100%;
   border-collapse: collapse;
@@ -71,10 +161,11 @@
 .price-cell {
   display: inline-grid;
   justify-items: end;
+  color: inherit;
+  text-decoration: none;
 }
 
-.price-abbr,
-.price-full {
+.price-abbr {
   grid-area: 1 / 1;
   transition: opacity 0.18s ease;
   white-space: nowrap;
@@ -83,7 +174,28 @@
 }
 
 .price-full {
+  grid-area: 1 / 1;
+  transition: opacity 0.18s ease;
+  white-space: nowrap;
   opacity: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  justify-content: space-between;
+}
+
+.price-name {
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-weight: normal;
+  text-align: left;
+}
+
+.price-val {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, monospace;
+  text-align: right;
 }
 
 .price-col:hover .price-abbr {
@@ -92,4 +204,81 @@
 
 .price-col:hover .price-full {
   opacity: 1;
+}
+
+a.price-cell:hover .price-name,
+a.price-cell:hover .price-val {
+  color: #7dd3fc;
+}
+
+/* ── Multi-input breakdown ──────────────────────────────── */
+.input-multi {
+  display: inline-grid;
+  justify-items: end;
+}
+
+.input-multi-total,
+.input-multi-breakdown {
+  grid-area: 1 / 1;
+  transition: opacity 0.18s ease;
+}
+
+.input-multi-total {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, monospace;
+}
+
+.input-multi-breakdown {
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: stretch;
+}
+
+.price-col:hover .input-multi-total {
+  opacity: 0;
+}
+
+.price-col:hover .input-multi-breakdown {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.input-multi-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  text-decoration: none;
+  color: #cbd5e1;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  transition: color 0.1s;
+}
+
+a.input-multi-row:hover {
+  color: #7dd3fc;
+}
+
+.input-multi-name  { text-align: left; }
+.input-multi-price {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, monospace;
+  color: #94a3b8;
+  text-align: right;
+}
+
+a.input-multi-row:hover .input-multi-price { color: #7dd3fc; }
+
+.input-multi-footer {
+  border-top: 1px solid #334155;
+  padding-top: 0.2rem;
+  margin-top: 0.1rem;
+  color: #94a3b8;
+}
+
+.input-multi-footer .input-multi-price {
+  color: #e2e8f0;
+  font-weight: 600;
 }

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "Herblore",
+    "title": "Herb Cleaning",
+    "tag": "herblore",
+    "rateConfig": {
+      "loopSecs": 3.5,
+      "conversionsPerLoop": 28
+    }
+  },
+  {
+    "id": "Cooking",
+    "title": "Cooking",
+    "tag": "cooking",
+    "rateConfig": {
+      "loopSecs": 22,
+      "conversionsPerLoop": 28
+    }
+  },
+  {
+    "id": "Fletching",
+    "title": "Fletching",
+    "tag": "fletching",
+    "rateConfig": {
+      "loopSecs": 0.14,
+      "conversionsPerLoop": 10
+    }
+  },
+  {
+    "id": "Fletching - Cutting Gems",
+    "title": "Fletching - Cutting Gems",
+    "tag": "fletching - cutting gems",
+    "rateConfig": {
+      "loopSecs": 80,
+      "conversionsPerLoop": 26
+    }
+  }
+]

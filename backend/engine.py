@@ -83,7 +83,8 @@ class Engine:
         for r in self.recipes:
             total_input_cost = 0
             total_output_val = 0
-            
+            output_qty = r.get('output_qty', 1)  # e.g. 12 for gem → bolt tips
+
             input_details = []
             output_details = []
 
@@ -100,10 +101,12 @@ class Engine:
                 total_input_cost += price
                 input_details.append({
                     "id": iid,
-                    "name": self.id_to_name.get(iid, f"Item {iid}")
+                    "name": self.id_to_name.get(iid, f"Item {iid}"),
+                    "price": price or None,
+                    "qty": 1,
                 })
 
-            # Calculate Outputs
+            # Calculate Outputs (qty-scaled)
             output_volume = 0
             for iid in r['outputs']:
                 sid = str(iid)
@@ -112,20 +115,24 @@ class Engine:
                     p = self.prices[sid]
                     price = p.get('high', 0)
                     if not price: price = p.get('low', 0)
-                    revenue = price - self.calculate_tax(price)
+                    revenue = (price - self.calculate_tax(price)) * output_qty
                     total_output_val += revenue
                 output_volume += self.volumes.get(sid, 0)
                 output_details.append({
                     "id": iid,
-                    "name": self.id_to_name.get(iid, f"Item {iid}")
+                    "name": self.id_to_name.get(iid, f"Item {iid}"),
+                    "price": price or None,
+                    "qty": output_qty,
                 })
 
             profit = total_output_val - total_input_cost
             roi = (profit / total_input_cost * 100) if total_input_cost > 0 else 0
 
-            xp = r.get('xp')
+            # Scale XP by output_qty so frontend's xp * uph gives correct hourly XP
+            raw_xp = r.get('xp')
+            effective_xp = raw_xp * output_qty if raw_xp else None
+            gp_xp = round(profit / effective_xp, 2) if effective_xp and effective_xp > 0 else None
             level = r.get('level')
-            gp_xp = round(profit / xp, 2) if xp and xp > 0 else None
 
             results.append(Recipe(
                 id=r['id'],
@@ -136,15 +143,39 @@ class Engine:
                 profit_margin=int(profit),
                 roi=round(roi, 2),
                 is_profitable=profit > 0,
-                xp=xp,
+                xp=effective_xp,
                 level=level,
                 gp_xp=gp_xp,
                 input_price=total_input_cost,
-                output_price=total_output_val,
+                output_price=int(total_output_val),
                 input_volume=input_volume or None,
                 output_volume=output_volume or None,
+                hidden=r.get('hidden', False),
             ))
-            
+
         return results
+
+    def set_recipe_hidden(self, recipe_id: str, hidden: bool) -> bool:
+        import json
+        import os
+        recipes_path = os.path.join(os.path.dirname(__file__), "recipes.json")
+        try:
+            with open(recipes_path, "r") as f:
+                recipes_data = json.load(f)
+            found = False
+            for r in recipes_data:
+                if r.get("id") == recipe_id:
+                    r["hidden"] = hidden
+                    found = True
+                    break
+            if not found:
+                return False
+            with open(recipes_path, "w") as f:
+                json.dump(recipes_data, f, indent=4)
+            self.load_recipes()
+            return True
+        except Exception as e:
+            print(f"Error setting recipe hidden: {e}")
+            return False
 
 engine = Engine()
